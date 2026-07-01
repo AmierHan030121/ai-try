@@ -10,6 +10,7 @@ data/
 third_party/
 results/raw/
 results/logs/
+results/crops/
 *.pt
 *.pth
 *.pth.tar

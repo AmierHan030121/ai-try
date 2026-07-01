@@ -20,7 +20,8 @@ The planned study reproduces CDChat, then tests whether change-aware crop select
 
 - CDChat: <https://github.com/techmn/cdchat>
 - Paper: <https://arxiv.org/abs/2409.16261>
-- Model weights: linked from the CDChat repository
+- Model weights: <https://huggingface.co/mubashir04/cdchat>
+- Reproduction notes: `docs/research/cdchat_reproduction.md`
 
 ## Planned Outputs
 
@@ -28,6 +29,13 @@ The planned study reproduces CDChat, then tests whether change-aware crop select
 - Metric tables under `results/`
 - Paper manuscript under `paper/`
 - Research notes and literature matrix under `docs/research/`
+
+## Current Executable Utilities
+
+- `experiments/make_smoke_questions.py`: create a small CDChat question subset.
+- `experiments/validate_cdchat_data.py`: verify the required `A/B/label` image layout.
+- `experiments/run_metrics.py`: evaluate CDChat JSONL predictions against caption references.
+- `experiments/build_change_crops.py`: generate paired crop images and crop metadata for `random`, `auto_diff`, and `oracle_mask` modes.
 
 ## Proxy
 

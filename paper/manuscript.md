@@ -16,7 +16,9 @@ Large multimodal models provide a flexible interface for remote sensing interpre
 
 ## 2. Related Work
 
-CDChat is the primary baseline because it provides a public implementation for remote sensing change description. GeoChat provides the remote sensing LLaVA-style precedent that CDChat builds upon. PromptCC is included as a non-conversational change captioning reference method. TEOChat, RS-LLaVA, and RemoteCLIP provide broader context for temporal earth observation VLMs, remote sensing instruction tuning, and remote sensing vision-language foundation models.
+CDChat is the primary baseline because it provides a public implementation for remote sensing change description and releases evaluation question and caption files for LEVIR-CD and SYSU-CD. GeoChat provides the remote sensing LLaVA-style precedent that CDChat builds upon. PromptCC is included as a non-conversational change captioning reference method.
+
+Recent interactive and temporal remote-sensing VLMs broaden the evaluation context. ChangeChat targets bitemporal remote-sensing change analysis through multimodal instruction tuning. Change-Agent combines change detection, change captioning, object counting, and LLM-based interpretation. TEOChat extends vision-language assistance to temporal earth observation data. RS-LLaVA and RemoteCLIP provide broader context for remote-sensing instruction tuning and remote-sensing vision-language foundation models. SECOND-CC and MModalCC are treated as a later robustness benchmark because they focus on change captioning under illumination, viewpoint, blur, and registration challenges.
 
 ## 3. Method
 
@@ -28,7 +30,7 @@ Oracle crops are not treated as deployable inputs because they can use ground-tr
 
 ### 4.1 Datasets
 
-The planned evaluation uses the CDChat release files for LEVIR-CD and SYSU-CD. Dataset access, file versions, and preprocessing details will be reported after local setup is complete.
+The planned evaluation uses the CDChat release files for LEVIR-CD and SYSU-CD. CDChat question files are JSON lists containing image identifiers and text prompts. Caption references are COCO-like JSON files with image names, reference captions, and region-count attributes. The CDChat evaluator requires the image folder to contain `A`, `B`, and `label` subdirectories with matching filenames. Dataset access, file versions, and preprocessing details will be reported after local setup is complete.
 
 ### 4.2 Baselines
 
@@ -40,7 +42,7 @@ The planned metrics are BLEU-4, METEOR, ROUGE-L, CIDEr, count accuracy, and coun
 
 ### 4.4 Implementation Details
 
-The first reproduction will use inference only. Fine-tuning will be attempted only after inference-only experiments establish a valid baseline. If fine-tuning is used, it will use LoRA or QLoRA with rank 8 and 16 under a single-run limit of 24 hours.
+The first reproduction will use inference only. A 10-question smoke test will be run before full test-set inference. The Hugging Face CDChat weights will be evaluated as merged model weights with `model_base=None`, and the evaluator output will be saved as JSONL. Full inference will be split across two GPUs only after single-GPU smoke testing succeeds. Fine-tuning will be attempted only after inference-only experiments establish a valid baseline. If fine-tuning is used, it will use LoRA or QLoRA with rank 8 and 16 under a single-run limit of 24 hours.
 
 ## 5. Results
 

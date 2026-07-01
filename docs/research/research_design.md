@@ -21,8 +21,11 @@ Compared with full-image prompting alone, adding automatically selected change c
 | Role | Work | Public Link | Why It Is Used |
 | --- | --- | --- | --- |
 | Main baseline | CDChat | https://github.com/techmn/cdchat | LLaVA/GeoChat-style remote sensing change description with public code, data files, and model link |
+| Interactive change VLM candidate | ChangeChat | https://github.com/hanlinwu/ChangeChat | Recent interactive bitemporal VLM with code and pretrained resources linked by the paper |
+| Multi-task change interpretation candidate | Change-Agent | https://github.com/Chen-Yang-Liu/Change-Agent | TGRS change detection, captioning, counting, and LLM-agent interpretation baseline |
 | Architecture precedent | GeoChat | https://github.com/mbzuai-oryx/GeoChat | Grounded remote sensing VLM used as CDChat's codebase inspiration |
 | Traditional RSICC baseline | PromptCC | https://github.com/Chen-Yang-Liu/PromptCC | Strong TGRS change captioning method with training and evaluation code |
+| Robustness dataset/baseline | SECOND-CC / MModalCC | https://github.com/ChangeCapsInRS/SecondCC | New robust change-captioning dataset and multimodal baseline for later external validation |
 | Related temporal VLM | TEOChat | https://github.com/ermongroup/TEOChat | Recent temporal earth observation VLM for related work |
 | Related RS instruction model | RS-LLaVA | https://github.com/BigData-KSU/RS-LLaVA | Small remote sensing instruction-tuning baseline for related work |
 | Related RS vision-language foundation model | RemoteCLIP | https://github.com/ChenDelong1999/RemoteCLIP | Retrieval/classification foundation model context |
@@ -60,9 +63,20 @@ The proposed method is **Change-Guided Multi-Crop Prompting**:
 ## Compute Plan
 
 1. Run inference-only reproduction first.
-2. Implement crop-based prompting without training.
-3. Fine-tune only if inference-only results justify it.
-4. If fine-tuning is used, apply LoRA or QLoRA only, with rank 8 and 16 as the first ablation.
+2. Validate CDChat on a 10-question smoke test before full evaluation.
+3. Split full inference across two GPUs with CDChat `num_chunks=2` after single-GPU smoke testing succeeds.
+4. Implement crop-based prompting without training.
+5. Fine-tune only if inference-only results justify it.
+6. If fine-tuning is used, apply LoRA or QLoRA only, with rank 8 and 16 as the first ablation.
+
+## Verified CDChat Schema Notes
+
+- Question files are JSON lists with fields such as `img_id` and `question`.
+- Prediction files are JSONL with `image_id`, `question_id`, and `answer`.
+- Caption references are COCO-like JSON files with an `images` list, `file_name`, `captions`, and `attribute.num_regions`.
+- The evaluator expects `/image-folder/A/<img_id>`, `/image-folder/B/<img_id>`, and `/image-folder/label/<img_id>`.
+- The repository README uses `--answer-file`, but the code-level argument is `--answers-file`.
+- The Hugging Face `model_weights_cdchat` directory should be tested with `model_base=None` because it appears to contain merged/full weights.
 
 ## Known Risks
 

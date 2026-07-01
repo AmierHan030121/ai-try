@@ -16,7 +16,7 @@ This project should be executed with independent agents and review gates.
 
 ## Review Gates
 
-1. Reproduction gate: official CDChat inference must run on at least 10 samples before full evaluation.
+1. Reproduction gate: official CDChat inference must run on at least 10 questions before full evaluation.
 2. Metrics gate: metric script must pass a tiny hand-checkable fixture before evaluating real outputs.
 3. Method gate: crop metadata must be visually spot-checked before model inference.
 4. Paper gate: no quantitative claim may enter the manuscript unless backed by `results/tables/*.csv`.
@@ -29,3 +29,17 @@ This project should be executed with independent agents and review gates.
 3. Method agent starts after dataset image naming is confirmed.
 4. Figure and paper agents start after the first complete metric table exists.
 5. Review agent runs after each major stage and before PDF/DOCX export.
+
+## Current Status
+
+- Literature agent has verified the initial reproducible-paper pool: CDChat, ChangeChat, Change-Agent, PromptCC, SECOND-CC/MModalCC, TEOChat, GeoChat, RS-LLaVA, RemoteCLIP, KCFI, and RSCC.
+- Reproduction agent has verified the CDChat input/output schema, HF weight location, required `A/B/label` folder layout, and the `--answers-file` argument mismatch in the README.
+- Metrics and crop utilities now have smoke-testable implementations under `experiments/`.
+
+## Next Agent Tasks
+
+1. Reproduction agent: download CDChat HF weights and one dataset image split, then run `make_smoke_questions.py` and `validate_cdchat_data.py`.
+2. Reproduction agent: run the 10-question wrapper in `docs/research/cdchat_reproduction.md` with `CUDA_VISIBLE_DEVICES=0`.
+3. Metrics agent: compute metrics from the smoke output only to validate schema, not for manuscript reporting.
+4. Method agent: generate `auto_diff` and `oracle_mask` crops for the smoke subset and inspect crop overlays before any full inference.
+5. Paper agent: add quantitative claims only after full test-set metrics exist in `results/tables/`.
