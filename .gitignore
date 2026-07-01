@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.env
+.cache/
+checkpoints/
+data/
+third_party/
+results/raw/
+results/logs/
+*.pt
+*.pth
+*.pth.tar
+*.bin
+*.safetensors
