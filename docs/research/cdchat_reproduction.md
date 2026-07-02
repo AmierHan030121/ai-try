@@ -46,7 +46,7 @@ export all_proxy=socks5://127.0.0.1:7890
 scripts/download_cdchat_weights.sh
 ```
 
-The script pins Hugging Face revision `bf08270f943114eee92c5fcd93daf5009d460af4`, downloads with resumable `wget -c`, and then runs:
+The script pins Hugging Face revision `bf08270f943114eee92c5fcd93daf5009d460af4`, performs a small Hugging Face proxy preflight, downloads with resumable `wget -c` into `*.part` files, and promotes files to their final checkpoint paths only after size and SHA-256 checks pass. It then runs:
 
 ```bash
 scripts/download_cdchat_weights.sh --verify-only
@@ -184,6 +184,7 @@ Modes:
 ## Immediate Risks
 
 - CDChat checkpoint download is the immediate blocker for smoke inference under the current proxy.
+- On 2026-07-02 UTC, `127.0.0.1:7890` was not listening and Hugging Face preflight failed with connection refused. Start the proxy before retrying checkpoint download.
 - SYSU image download is still required before SYSU reproduction; the CDChat repository contains JSON files but not raw SYSU images.
 - Official dependency pins are older; keep inference and training environments separate.
 - Full training is not recommended under the current project constraints. If needed later, use LoRA/QLoRA with reduced batch size and a hard 24-hour cap.

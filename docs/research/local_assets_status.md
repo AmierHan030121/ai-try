@@ -44,13 +44,16 @@ Pinned revision: `bf08270f943114eee92c5fcd93daf5009d460af4`
 Current local files:
 
 - Complete: `checkpoints/cdchat/model_weights_cdchat/tokenizer.model` (499,723 bytes)
-- Missing/incomplete: `checkpoints/cdchat/pretrain_mm_projector/mm_projector.bin` (expected 50,349,693 bytes)
+- Missing final file: `checkpoints/cdchat/pretrain_mm_projector/mm_projector.bin` (expected 50,349,693 bytes)
+- Resumable partial: `checkpoints/cdchat/pretrain_mm_projector/mm_projector.bin.part` (0 bytes after the failed proxy preflight)
 - Missing/incomplete: `checkpoints/cdchat/model_weights_cdchat/pytorch_model-00001-of-00002.bin` (expected 9,976,634,558 bytes)
 - Missing: `checkpoints/cdchat/model_weights_cdchat/pytorch_model-00002-of-00002.bin`
 
 Expected SHA-256 hashes are encoded in `scripts/verify_cdchat_weights.py`. Size-only checks are not sufficient. During testing, an interrupted `aria2c` transfer produced a 50,349,693-byte `mm_projector.bin` with the wrong SHA-256, so that file was quarantined as `checkpoints/cdchat/pretrain_mm_projector/mm_projector.bin.bad_20260702_0409` and must not be used for inference.
 
-The `hf` CLI and `curl` were unstable through the current proxy for large files. `wget` can connect and resume, but throughput through the current proxy window was too low for a same-turn full download.
+The download script now writes checkpoint payloads to `*.part` files and only promotes them to the final checkpoint path after size and SHA-256 checks pass. This prevents interrupted transfers from being mistaken for usable model weights.
+
+Current proxy diagnosis on 2026-07-02 UTC: `127.0.0.1:7890` is not listening in this shell, and Hugging Face preflight fails with `curl: (7) Failed to connect to 127.0.0.1 port 7890: Connection refused`. Large-file download remains blocked until the proxy process is started or a working proxy is exported.
 
 Download and verify:
 
@@ -70,6 +73,8 @@ scripts/download_cdchat_weights.sh pretrain_mm_projector/mm_projector.bin
 scripts/download_cdchat_weights.sh model_weights_cdchat/pytorch_model-00001-of-00002.bin
 scripts/download_cdchat_weights.sh model_weights_cdchat/pytorch_model-00002-of-00002.bin
 ```
+
+The script performs a small Hugging Face preflight before downloading large files. Do not set `CDCHAT_SKIP_PREFLIGHT=1` unless you are deliberately debugging network behavior.
 
 Do not run CDChat inference until `scripts/download_cdchat_weights.sh --verify-only` reports `OK` for both size and SHA-256 on all four required files.
 
