@@ -34,6 +34,31 @@ pip install flash-attn --no-build-isolation
 
 For the first inference-only reproduction, do not install `flash-attn` until the basic environment runs.
 
+## Checkpoint Download Gate
+
+Download the pinned CDChat weights through the local proxy:
+
+```bash
+export http_proxy=http://127.0.0.1:7890
+export https_proxy=http://127.0.0.1:7890
+export all_proxy=socks5://127.0.0.1:7890
+
+scripts/download_cdchat_weights.sh
+```
+
+The script pins Hugging Face revision `bf08270f943114eee92c5fcd93daf5009d460af4`, downloads with resumable `wget -c`, and then runs:
+
+```bash
+scripts/download_cdchat_weights.sh --verify-only
+```
+
+Inference is blocked until the verifier reports both correct size and correct SHA-256 for:
+
+- `checkpoints/cdchat/pretrain_mm_projector/mm_projector.bin`
+- `checkpoints/cdchat/model_weights_cdchat/pytorch_model-00001-of-00002.bin`
+- `checkpoints/cdchat/model_weights_cdchat/pytorch_model-00002-of-00002.bin`
+- `checkpoints/cdchat/model_weights_cdchat/tokenizer.model`
+
 ## Data Layout Required by CDChat Evaluation
 
 The official evaluator loads three files for every `img_id`:
@@ -57,14 +82,22 @@ Official caption references:
 - `data_files/levir_captions.json`
 - `data_files/sysu_test_captions.json`
 
+Local matched files prepared for this workspace:
+
+- `results/raw/eval_questions_levir_test_matched.json`
+- `results/raw/smoke_levir_matched_10q.json`
+- `results/raw/eval_questions_sysu_test_matched.json`
+
+Use the matched files for metric reporting. The original LEVIR question file contains 2032 unique images, but the official LEVIR reference file contains references for 1827 test images. The original SYSU question file contains 4000 unique images, but the official SYSU reference file contains references for 3774 images.
+
 ## Smoke Test
 
 Create a 10-question subset:
 
 ```bash
 python experiments/make_smoke_questions.py \
-  --questions third_party/cdchat/data_files/eval_questions_levir_test.json \
-  --out results/raw/smoke_levir_10q.json \
+  --questions results/raw/eval_questions_levir_test_matched.json \
+  --out results/raw/smoke_levir_matched_10q.json \
   --limit 10
 ```
 
@@ -72,9 +105,9 @@ Validate that all image files exist:
 
 ```bash
 python experiments/validate_cdchat_data.py \
-  --image-root /path/to/LEVIR_or_SYSU_root \
-  --questions results/raw/smoke_levir_10q.json \
-  --out-missing results/logs/smoke_levir_missing.csv
+  --image-root data/cdchat/levir_matched \
+  --questions results/raw/smoke_levir_matched_10q.json \
+  --out-missing results/logs/smoke_levir_matched_missing.csv
 ```
 
 Run inference with a wrapper that passes `model_base=None` for the HF merged weights:
@@ -89,9 +122,9 @@ args = Namespace(
     model_path="/path/to/model_weights_cdchat",
     model_base=None,
     mm_projector_path=None,
-    image_folder="/path/to/LEVIR_or_SYSU_root",
-    question_file="../../results/raw/smoke_levir_10q.json",
-    answers_file="../../results/raw/smoke_levir_10q_pred.jsonl",
+    image_folder="../../data/cdchat/levir_matched",
+    question_file="../../results/raw/smoke_levir_matched_10q.json",
+    answers_file="../../results/raw/smoke_levir_matched_10q_pred.jsonl",
     conv_mode="llava_v1",
     num_chunks=1,
     chunk_idx=0,
@@ -114,10 +147,10 @@ Notes:
 
 ```bash
 python experiments/run_metrics.py \
-  --pred results/raw/smoke_levir_10q_pred.jsonl \
+  --pred results/raw/smoke_levir_matched_10q_pred.jsonl \
   --references third_party/cdchat/data_files/levir_captions.json \
-  --out results/tables/smoke_levir_10q_metrics.csv \
-  --per-sample-out results/tables/smoke_levir_10q_per_sample.csv
+  --out results/tables/smoke_levir_matched_10q_metrics.csv \
+  --per-sample-out results/tables/smoke_levir_matched_10q_per_sample.csv
 ```
 
 The script uses `pycocoevalcap` for BLEU, METEOR, ROUGE-L, and CIDEr when available. Count metrics use `attribute.num_regions` from the reference file and a conservative number extractor from the generated answer.
@@ -126,9 +159,9 @@ The script uses `pycocoevalcap` for BLEU, METEOR, ROUGE-L, and CIDEr when availa
 
 ```bash
 python experiments/build_change_crops.py \
-  --image-root /path/to/LEVIR_or_SYSU_root \
-  --metadata results/raw/smoke_levir_10q.json \
-  --out-dir results/crops/levir_smoke \
+  --image-root data/cdchat/levir_matched \
+  --metadata results/raw/smoke_levir_matched_10q.json \
+  --out-dir results/crops/levir_matched_smoke_auto_diff \
   --mode auto_diff \
   --top-k 3 \
   --crop-size 128
@@ -144,12 +177,13 @@ Modes:
 ## Current Local Status
 
 - `third_party/cdchat` has been cloned locally at commit `8b59976`.
-- `results/raw/smoke_levir_10q.json` has been generated from the official LEVIR question file.
-- `data/cdchat/levir` currently lacks LEVIR image files, so validation correctly reports missing `A/B/label` files.
-- A first `hf download mubashir04/cdchat --local-dir checkpoints/cdchat` attempt retrieved small config files but did not finish the large model shards before it was interrupted. Re-run the command when a stable download window is available.
+- `data/cdchat/levir_matched` contains symlinks for 1827 LEVIR images with `A/B/label`.
+- `results/raw/smoke_levir_matched_10q.json` has been generated and validated.
+- CDChat weights are not yet verified. A size-matching but SHA-mismatched `mm_projector.bin` was quarantined; see `docs/research/local_assets_status.md` before running inference.
 
 ## Immediate Risks
 
-- Dataset download is the likely blocker, because the CDChat repository contains JSON files but not raw LEVIR/SYSU images.
+- CDChat checkpoint download is the immediate blocker for smoke inference under the current proxy.
+- SYSU image download is still required before SYSU reproduction; the CDChat repository contains JSON files but not raw SYSU images.
 - Official dependency pins are older; keep inference and training environments separate.
 - Full training is not recommended under the current project constraints. If needed later, use LoRA/QLoRA with reduced batch size and a hard 24-hour cap.
