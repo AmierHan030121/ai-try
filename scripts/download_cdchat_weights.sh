@@ -5,6 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REVISION="${CDCHAT_REVISION:-bf08270f943114eee92c5fcd93daf5009d460af4}"
 BASE_URL="${CDCHAT_BASE_URL:-https://huggingface.co/mubashir04/cdchat/resolve/${REVISION}}"
 PREFLIGHT_URL="${CDCHAT_PREFLIGHT_URL:-${BASE_URL}/model_weights_cdchat/config.json}"
+if command -v aria2c >/dev/null 2>&1; then
+  DOWNLOADER="${CDCHAT_DOWNLOADER:-aria2c}"
+else
+  DOWNLOADER="${CDCHAT_DOWNLOADER:-wget}"
+fi
 
 export http_proxy="${http_proxy:-http://127.0.0.1:7890}"
 export https_proxy="${https_proxy:-http://127.0.0.1:7890}"
@@ -27,6 +32,51 @@ declare -A EXPECTED_SHA256=(
   ["model_weights_cdchat/pytorch_model-00001-of-00002.bin"]="6f6e941c126d913a889a7a6ed255ed130b27444c2268e35fb907a5a1a67e882d"
   ["model_weights_cdchat/pytorch_model-00002-of-00002.bin"]="42c4bf4528254a0544894673eecd2fbed6a26d6705740a8483c2aabaca1e3e18"
 )
+
+download_to_part() {
+  local rel_path="$1"
+  local part_path="$2"
+  local expected_sha="${3:-}"
+  local url="${BASE_URL}/${rel_path}"
+
+  case "${DOWNLOADER}" in
+    aria2c)
+      local aria2_args=(
+        --continue=true
+        --max-tries=20
+        --retry-wait=10
+        --timeout=60
+        --connect-timeout=60
+        --max-connection-per-server="${CDCHAT_ARIA2_CONNECTIONS:-8}"
+        --split="${CDCHAT_ARIA2_SPLIT:-8}"
+        --min-split-size="${CDCHAT_ARIA2_MIN_SPLIT_SIZE:-4M}"
+        --file-allocation=none
+        --summary-interval=30
+        --dir="$(dirname "${part_path}")"
+        --out="$(basename "${part_path}")"
+      )
+      if [[ -n "${http_proxy:-}" ]]; then
+        aria2_args+=(--http-proxy="${http_proxy}")
+      fi
+      if [[ -n "${https_proxy:-}" ]]; then
+        aria2_args+=(--https-proxy="${https_proxy}")
+      fi
+      if [[ -n "${expected_sha}" ]]; then
+        aria2_args+=(--checksum="sha-256=${expected_sha}")
+      fi
+      env -u all_proxy -u ALL_PROXY aria2c "${aria2_args[@]}" "${url}"
+      ;;
+    wget)
+      wget -c --timeout=60 --tries=20 --waitretry=10 --progress=dot:giga \
+        -O "${part_path}" \
+        "${url}"
+      ;;
+    *)
+      echo "Unsupported CDChat downloader: ${DOWNLOADER}" >&2
+      return 2
+      ;;
+  esac
+}
 
 download_file() {
   local rel_path="$1"
@@ -85,9 +135,7 @@ download_file() {
     fi
   fi
 
-  if ! wget -c --timeout=60 --tries=20 --waitretry=10 --progress=dot:giga \
-    -O "${part_path}" \
-    "${BASE_URL}/${rel_path}"; then
+  if ! download_to_part "${rel_path}" "${part_path}" "${expected_sha}"; then
     echo "Download interrupted; resumable partial kept at ${part_path}" >&2
     return 1
   fi
@@ -135,6 +183,7 @@ EOF
 
 echo "CDChat revision: ${REVISION}"
 echo "Base URL: ${BASE_URL}"
+echo "Downloader: ${DOWNLOADER}"
 echo "http_proxy=${http_proxy}"
 echo "https_proxy=${https_proxy}"
 
